@@ -1,72 +1,45 @@
-from flask import Flask, render_template, request, send_file
+from flask import Flask, render_template, request, redirect, url_for, flash
 import yt_dlp
 import os
-import re
 
 app = Flask(__name__)
+app.secret_key = "secret123"  # needed for flash messages
 
-DOWNLOAD_FOLDER = "downloads"
-os.makedirs(DOWNLOAD_FOLDER, exist_ok=True)
+# Create 'downloads' folder if not exists
+if not os.path.exists("downloads"):
+    os.makedirs("downloads")
 
-def clean_filename(title):
-    """Clean invalid filename characters."""
-    return re.sub(r'[\\/*?:"<>|]', "", title)
-
-@app.route("/")
+@app.route('/')
 def index():
-    return render_template("index.html")
+    return render_template('index.html')
 
-@app.route("/download", methods=["POST"])
+
+@app.route('/download', methods=['POST'])
 def download_video():
+    url = request.form.get('url')
+
+    if not url:
+        flash("Please enter a valid YouTube URL.", "error")
+        return redirect(url_for('index'))
+
     try:
-        url = request.form["url"].strip()
-        format_choice = request.form["format"]
+        # yt-dlp options
+        ydl_opts = {
+            'outtmpl': os.path.join("downloads", '%(title)s.%(ext)s'),
+            'format': 'bestvideo+bestaudio/best',
+            'merge_output_format': 'mp4',
+        }
 
-        # ✅ Normalize Shorts or youtu.be URLs
-        if "shorts/" in url:
-            match = re.search(r"shorts/([^?&/]+)", url)
-            if match:
-                url = f"https://www.youtube.com/watch?v={match.group(1)}"
-        elif "youtu.be/" in url:
-            match = re.search(r"youtu\.be/([^?&/]+)", url)
-            if match:
-                url = f"https://www.youtube.com/watch?v={match.group(1)}"
-
-        # Remove tracking parameters like ?si=
-        url = re.sub(r"(\?|\&)(si|pp|ab_channel)=[^&]+", "", url)
-
-        # Choose yt_dlp download options
-        if format_choice == "audio":
-            ydl_opts = {
-                "format": "bestaudio/best",
-                "outtmpl": os.path.join(DOWNLOAD_FOLDER, "%(title)s.%(ext)s"),
-                "postprocessors": [{
-                    "key": "FFmpegExtractAudio",
-                    "preferredcodec": "mp3",
-                    "preferredquality": "192",
-                }],
-            }
-        else:
-            ydl_opts = {
-                "format": "mp4/best",
-                "outtmpl": os.path.join(DOWNLOAD_FOLDER, "%(title)s.%(ext)s"),
-            }
-
-        # Download video/audio
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            info = ydl.extract_info(url, download=True)
-            filename = ydl.prepare_filename(info)
+            ydl.download([url])
 
-        # Rename extension for MP3
-        if format_choice == "audio":
-            filename = os.path.splitext(filename)[0] + ".mp3"
-            return send_file(filename, as_attachment=True, mimetype="audio/mpeg")
-        else:
-            return send_file(filename, as_attachment=True, mimetype="video/mp4")
+        flash("✅ Download started successfully! Check 'downloads' folder.", "success")
 
     except Exception as e:
-        return f"❌ Error: {str(e)}", 400
+        flash(f"❌ Error: {str(e)}", "error")
+
+    return redirect(url_for('index'))
 
 
-if __name__ == "__main__":
-    app.run(debug=True)
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=5000)
