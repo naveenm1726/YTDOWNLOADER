@@ -1,45 +1,45 @@
-from flask import Flask, render_template, request, redirect, url_for, flash
+from flask import Flask, render_template, request, send_file, jsonify
 import yt_dlp
 import os
+import uuid
 
 app = Flask(__name__)
-app.secret_key = "secret123"  # needed for flash messages
 
-# Create 'downloads' folder if not exists
-if not os.path.exists("downloads"):
-    os.makedirs("downloads")
+DOWNLOAD_DIR = "/tmp"
 
 @app.route('/')
 def index():
     return render_template('index.html')
 
-
 @app.route('/download', methods=['POST'])
 def download_video():
-    url = request.form.get('url')
+    url = request.form['url']
 
     if not url:
-        flash("Please enter a valid YouTube URL.", "error")
-        return redirect(url_for('index'))
+        return jsonify({'error': 'No URL provided'}), 400
 
     try:
-        # yt-dlp options
+        unique_id = str(uuid.uuid4())
+        output_path = os.path.join(DOWNLOAD_DIR, f"{unique_id}.mp4")
+
         ydl_opts = {
-            'outtmpl': os.path.join("downloads", '%(title)s.%(ext)s'),
             'format': 'bestvideo+bestaudio/best',
+            'outtmpl': output_path,
             'merge_output_format': 'mp4',
+            'noplaylist': True,
+            'quiet': True,
+            'geo_bypass': True,
+            'nocheckcertificate': True,
+            'cookiefile': None  # No cookies for public videos
         }
 
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             ydl.download([url])
 
-        flash("✅ Download started successfully! Check 'downloads' folder.", "success")
+        return send_file(output_path, as_attachment=True)
 
     except Exception as e:
-        flash(f"❌ Error: {str(e)}", "error")
-
-    return redirect(url_for('index'))
-
+        return jsonify({'error': str(e)}), 500
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000)
+    app.run(debug=True)
