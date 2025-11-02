@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>YouTube Downloader</title>
+  <style>
+    body { font-family: Arial; text-align: center; margin-top: 80px; background: #f2f2f2; }
+    form { background: #fff; padding: 30px; display: inline-block; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+    input, select, button { padding: 10px; margin: 8px; width: 300px; border-radius: 8px; border: 1px solid #ccc; }
+    button { background-color: #ff0000; color: white; cursor: pointer; font-weight: bold; }
+    button:hover { background-color: #cc0000; }
+  </style>
+</head>
+<body>
+  <h2>🎬 YouTube Video / Audio Downloader</h2>
+  <form action="/download" method="POST">
+    <input type="text" name="url" placeholder="Enter YouTube or Shorts link" required><br>
+    <select name="format">
+      <option value="video">Video (MP4)</option>
+      <option value="audio">Audio (MP3)</option>
+    </select><br>
+    <button type="submit">Download</button>
+  </form>
+</body>
+</html>
